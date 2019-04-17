@@ -1,4 +1,4 @@
-# stackdriver-automation project
+# StackDriver Documentation and Automated Alerting System
 
 ## Goals:
 

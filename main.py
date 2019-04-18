@@ -15,6 +15,7 @@ def inject_to_slack(event, context):
     headers = {
         'Content-type': 'application/json',
     }  
+    slack_url = 'https://hooks.slack.com/services/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'
     
     # decode event paylod
     pubsub_message = base64.b64decode(event['data']).decode('utf-8')
@@ -23,7 +24,11 @@ def inject_to_slack(event, context):
     # set up alert message format; this is where you would like to customize your alert message:
     alert_dict = dict()
     alert_dict['log_id'] = pubsub_message['insertId']
-    alert_dict['jsonPayload'] = pubsub_message['jsonPayload']
+    alert_dict['connector_id'] = pubsub_message['jsonPayload']['connector_id']
+    alert_dict['connector_type'] = pubsub_message['jsonPayload']['connector_type']
+    if 'data' in pubsub_message['jsonPayload'].keys():
+        alert_dict['jsonPayload_data'] = pubsub_message['jsonPayload']['data']
+
     alert_dict['severity'] = pubsub_message['severity']
     alert_dict['logName'] = pubsub_message['logName']
     
@@ -36,10 +41,10 @@ def inject_to_slack(event, context):
     if alert_dict['severity'] == "ERROR" or alert_dict['severity'] == "WARNING":
 
         # set up jinja template
-        t = Template('{"attachments":[{"title":"StackDriver Alerts on fivetran Projects", "mrkdwn_in": ["text","fields"], "text": "{{str_var}}"}]}')
-
-        payload = t.render(str_var=alert_dict)
-        response = requests.post('https://hooks.slack.com/services/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', headers=headers, data=payload)
+        t = Template('{"attachments":[{"title":"StackDriver Alerts from fivetran connector: {{source}}", "mrkdwn_in": ["text","fields"], "text": "{{str_var}}"}]}')
+        payload = t.render(source=alert_dict['connector_id'], str_var=alert_dict)
+        
+        response = requests.post(slack_url, headers=headers, data=payload)
         
     else:
         return None

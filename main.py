@@ -40,7 +40,7 @@ def inject_to_slack(event, context):
         # set up jinja template
         t = Template('{"attachments":[{"title":"StackDriver Alerts on fivetran Projects", "mrkdwn_in": ["text","fields"], "text": {{str_var}}}]}')
 
-        payload = t.render(str_var=f"{new_msg}")
+        payload = t.render(str_var=new_msg)
         response = requests.post('https://hooks.slack.com/services/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', headers=headers, data=payload)
         
     else:

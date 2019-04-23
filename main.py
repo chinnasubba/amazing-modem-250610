@@ -39,6 +39,7 @@ def inject_to_slack(event, context):
 
     # only push ERROR or WARNING message to Slack
     if alert_dict['severity'] == "ERROR": # or alert_dict['severity'] == "WARNING"
+        # WARNING: payload changes for every severity type. Need to change the keys of alert_dict['jsonPayload_data]
 
         # set up jinja template
         id_array = alert_dict['logName'].split("/")[-1].split("-")
@@ -48,8 +49,8 @@ def inject_to_slack(event, context):
             *Project*: {proj} 
             *Connector Type*: {connType}
             *Connector Schema*: {connSchema}
-            *Alert Message*: {message}
-            *Alert Type*: {messageType}
+            *Alert Reason*: {reason}
+            *Alert Status*: {status}
             *StackDriver Log ID*: {logId}
             *Received Timestamp*: {receivedAtTimestamp}
             *Severity*: {severity}
@@ -58,8 +59,8 @@ def inject_to_slack(event, context):
             proj=id_array[1],
             connType=alert_dict['connector_type'],
             connSchema=alert_dict['connector_id'],
-            message=alert_dict['jsonPayload_data']['message'],
-            messageType=alert_dict['jsonPayload_data']['type'],
+            reason=alert_dict['jsonPayload_data']['reason'],
+            status=alert_dict['jsonPayload_data']['status'],
             logId=alert_dict['log_id'],
             receivedAtTimestamp=alert_dict['receiveTimestamp'],
             severity=alert_dict['severity'],

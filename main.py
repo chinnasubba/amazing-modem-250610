@@ -56,6 +56,7 @@ def inject_to_slack(event, context):
             *StackDriver Log ID*: {logId}
             *Received Timestamp*: {receivedAtTimestamp}
             *Severity*: {severity}
+            *fivetran Dash URL*: {dash_url}
             """.format(
             proj=id_array[1],
             connType=alert_dict['connector_type'],
@@ -64,7 +65,8 @@ def inject_to_slack(event, context):
             messageType=alert_dict['jsonPayload_data']['type'],
             logId=alert_dict['log_id'],
             receivedAtTimestamp=alert_dict['receiveTimestamp'],
-            severity=alert_dict['severity']
+            severity=alert_dict['severity'],
+            dash_url=f"https://fivetran.com/dashboard/connectors/{id_array[2]}/{alert_dict['connector_id']}"
             )
 
         t = Template('{"text": "{{pretty_msg}}"}')

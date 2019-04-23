@@ -41,9 +41,6 @@ def inject_to_slack(event, context):
     if alert_dict['severity'] == "ERROR": # or alert_dict['severity'] == "WARNING"
 
         # set up jinja template
-        t = Template('{"attachments":[{"title":"StackDriver Alerts from fivetran connector: {{source}}", "mrkdwn_in": ["text","fields"], "text": "{{str_var}}"}]}')
-        payload = t.render(source=alert_dict['connector_id'], str_var=alert_dict)
-        
         id_array = alert_dict['logName'].split("/")[-1].split("-")
 
         pretty_msg = """

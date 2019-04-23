@@ -44,7 +44,33 @@ def inject_to_slack(event, context):
         t = Template('{"attachments":[{"title":"StackDriver Alerts from fivetran connector: {{source}}", "mrkdwn_in": ["text","fields"], "text": "{{str_var}}"}]}')
         payload = t.render(source=alert_dict['connector_id'], str_var=alert_dict)
         
-        response = requests.post(slack_url, headers=headers, data=payload)
+        id_array = alert_dict['logName'].split("/")[-1].split("-")
+
+        pretty_msg = """
+            :red_circle: Connector Failed.  
+            *Project*: {proj} 
+            *Connector Type*: {connType}
+            *Connector Schema*: {connSchema}
+            *Alert Message*: {message}
+            *Alert Type*: {messageType}
+            *StackDriver Log ID*: {logId}
+            *Received Timestamp*: {receivedAtTimestamp}
+            *Severity*: {severity}
+            """.format(
+            proj=id_array[1],
+            connType=alert_dict['connector_type'],
+            connSchema=alert_dict['connector_id'],
+            message=alert_dict['jsonPayload_data']['message'],
+            messageType=alert_dict['jsonPayload_data']['type'],
+            logId=alert_dict['log_id'],
+            receivedAtTimestamp=alert_dict['receiveTimestamp'],
+            severity=alert_dict['severity']
+            )
+
+        t = Template('{"text": "{{pretty_msg}}"}')
+        pretty_payload = t.render(pretty_msg=pretty_msg)
+
+        response = requests.post(slack_url, headers=headers, data=pretty_payload)
         
     else:
         return None

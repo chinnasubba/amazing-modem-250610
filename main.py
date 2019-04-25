@@ -6,6 +6,8 @@ from datetime import datetime
 from jinja2 import Template
 from google.cloud import storage
 
+
+# this CF takes fivetran logs pub/sub and transform to messages for Slack webhook ingestion
 def inject_to_slack(event, context):
     """Triggered from a message on a Cloud Pub/Sub topic.
     Args:
@@ -77,16 +79,17 @@ def inject_to_slack(event, context):
         return None
 
 
+# this CF takes airflow logs that are being stored in Cloud Storage and send to StackDriver only the traceback errors 
 def airflow_handler(data, context):
     """Triggered by a change to a Cloud Storage bucket.
     Args:
          event (dict): Event payload.
          context (google.cloud.functions.Context): Metadata for the event.
     """
-    print('Bucket: {}'.format(data['bucket']))
-    print('File: {}'.format(data['name']))
     
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(data['bucket'])
     blob = bucket.blob(data['name'])
     print(blob.download_as_string())
+
+

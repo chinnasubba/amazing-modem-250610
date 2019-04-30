@@ -97,58 +97,59 @@ def airflow_handler(data, context):
     bucket = storage_client.get_bucket(data['bucket'])
     blobs = bucket.list_blobs()
     for blob in blobs:
-        blob_str = blob.download_as_string()
-        new_blob_str = blob_str.decode('utf-8')
-        new_blob_list = new_blob_str.split('\n')
+        if blob.name.split('/')[2]>='2019-04-30T21:00:00+00:00':
+            blob_str = blob.download_as_string()
+            new_blob_str = blob_str.decode('utf-8')
+            new_blob_list = new_blob_str.split('\n')
 
-        # extracting trace errors
-        for count, line in enumerate(new_blob_list):
-            counter = count
-            output = []
-            if 'ERROR' in line:
-                for sub_count, sub_line in enumerate(new_blob_list, counter):
-                    
-                    if ('INFO' not in sub_line) and (' /tmp' not in sub_line) and (sub_line[0:3] != '---') and (sub_line[-4:-1] != '---') \
-                    and ('AIRFLOW_' not in sub_line):
-                        output.append(sub_line)
-                break
-        
-        blob_name = blob.name
-        log_array = blob_name.split('/')
+            # extracting trace errors
+            for count, line in enumerate(new_blob_list):
+                counter = count
+                output = []
+                if 'ERROR' in line:
+                    for sub_count, sub_line in enumerate(new_blob_list, counter):
+                        
+                        if ('INFO' not in sub_line) and (' /tmp' not in sub_line) and (sub_line[0:3] != '---') and (sub_line[-4:-1] != '---') \
+                        and ('AIRFLOW_' not in sub_line):
+                            output.append(sub_line)
+                    break
+            
+            blob_name = blob.name
+            log_array = blob_name.split('/')
 
-        # set up alert message format; this is where you would like to customize your alert message:
-        alert_dict = dict()
-        alert_dict['dag_id'] = log_array[0]
-        alert_dict['task_id'] = log_array[1]
-        alert_dict['attempts'] = log_array[3][0]
-        alert_dict['log_details'] = output
-        ts = datetime.strptime(log_array[2][:-6], "%Y-%m-%dT%H:%M:%S")
-        new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
-        alert_dict['exec_ts'] = new_ts
-        new_alert_dict = '\n '.join(alert_dict['log_details'])
-        newer_alert_dict = new_alert_dict.replace("\"", "'")
-        conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
+            # set up alert message format; this is where you would like to customize your alert message:
+            alert_dict = dict()
+            alert_dict['dag_id'] = log_array[0]
+            alert_dict['task_id'] = log_array[1]
+            alert_dict['attempts'] = log_array[3][0]
+            alert_dict['log_details'] = output
+            ts = datetime.strptime(log_array[2][:-6], "%Y-%m-%dT%H:%M:%S")
+            new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
+            alert_dict['exec_ts'] = new_ts
+            new_alert_dict = '\n '.join(alert_dict['log_details'])
+            newer_alert_dict = new_alert_dict.replace("\"", "'")
+            conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
 
 
-        pretty_msg = """
-            :red_circle: Airflow DAG Failed.  
-            *DAG ID*: {dagId} 
-            *Task ID*: {taskId}
-            *Attempts of Retries*: {attempts}
-            *Execution Timestamp*: {execTimestamp}
-            *Log Details*: {logDetails}
-            *Severity*: {severity}
-            *Airflow DAG Status URL*: {url}
-            """.format(
-            dagId=alert_dict['dag_id'],
-            taskId=alert_dict['task_id'],
-            attempts=alert_dict['attempts'],
-            execTimestamp=alert_dict['exec_ts'],
-            logDetails=conv_alert_dict,
-            severity='ERROR',
-            url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
+            pretty_msg = """
+                :red_circle: Airflow DAG Failed.  
+                *DAG ID*: {dagId} 
+                *Task ID*: {taskId}
+                *Attempts of Retries*: {attempts}
+                *Execution Timestamp*: {execTimestamp}
+                *Log Details*: {logDetails}
+                *Severity*: {severity}
+                *Airflow DAG Status URL*: {url}
+                """.format(
+                dagId=alert_dict['dag_id'],
+                taskId=alert_dict['task_id'],
+                attempts=alert_dict['attempts'],
+                execTimestamp=alert_dict['exec_ts'],
+                logDetails=conv_alert_dict,
+                severity='ERROR',
+                url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
 
-        t = Template('{"text": "{{pretty_msg}}"}')
-        pretty_payload = t.render(pretty_msg=pretty_msg)
-        # response = requests.post(slack_url, headers=headers, data=pretty_payload)
-        # print(response.text)
+            t = Template('{"text": "{{pretty_msg}}"}')
+            pretty_payload = t.render(pretty_msg=pretty_msg)
+            response = requests.post(slack_url, headers=headers, data=pretty_payload)
+            print(response.text)

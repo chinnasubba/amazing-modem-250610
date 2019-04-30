@@ -152,12 +152,3 @@ def airflow_handler(data, context):
         pretty_payload = t.render(pretty_msg=pretty_msg)
         response = requests.post(slack_url, headers=headers, data=pretty_payload)
         print(response.text)
-
-
-
-
-
-    
-
-
-

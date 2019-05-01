@@ -137,7 +137,8 @@ def airflow_handler(data, context):
             *Task ID*: {taskId}
             *Attempts of Retries*: {attempts}
             *Execution Timestamp*: {execTimestamp}
-            *Log Details*: {logDetails}
+            *Log Details*: 
+            {logDetails}
             *Severity*: {severity}
             *Airflow DAG Status URL*: {url}
             """.format(

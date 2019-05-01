@@ -151,5 +151,5 @@ def airflow_handler(data, context):
 
             t = Template('{"text": "{{pretty_msg}}"}')
             pretty_payload = t.render(pretty_msg=pretty_msg)
-            response = requests.post(slack_url, headers=headers, data=pretty_payload)
-            print(response.text)
+            # response = requests.post(slack_url, headers=headers, data=pretty_payload)
+            # print(response.text)

@@ -103,26 +103,27 @@ def airflow_handler(data, context):
     # extracting trace errors
     for count, line in enumerate(new_blob_list):
         counter = count
-        output = []
+        traceback = []
 
         if 'ERROR' in line:
             for sub_count, sub_line in enumerate(new_blob_list, counter):
                 
                 if ('INFO' not in sub_line) and (' /tmp' not in sub_line) and (sub_line[0:3] != '---') and (sub_line[-4:-1] != '---') \
                 and ('AIRFLOW_' not in sub_line):
-                    output.append(sub_line)
+                    traceback.append(sub_line)
             break
     
     blob_name = blob.name
     log_array = blob_name.split('/')
 
-    if len(output) > 0:    
+    # checking the logging_mixin output (last line of log)
+    if 'Task exited with return code 1' in new_blob_list[-2]:
         # set up alert message format; this is where you would like to customize your alert message:
         alert_dict = dict()
         alert_dict['dag_id'] = log_array[0]
         alert_dict['task_id'] = log_array[1]
         alert_dict['attempts'] = log_array[3][0]
-        alert_dict['log_details'] = output
+        alert_dict['log_details'] = traceback
         ts = datetime.strptime(log_array[2][:-6], "%Y-%m-%dT%H:%M:%S")
         new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
         alert_dict['exec_ts'] = new_ts

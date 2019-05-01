@@ -125,12 +125,11 @@ def airflow_handler(data, context):
         alert_dict['attempts'] = log_array[3][0]
         alert_dict['log_details'] = traceback
         ts = datetime.strptime(log_array[2][:-6], "%Y-%m-%dT%H:%M:%S")
-        new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
+        new_ts = datetime.strftime(ts + timedelta(hours=-6), "%Y-%m-%dT%H:%M:%S")
         alert_dict['exec_ts'] = new_ts
         new_alert_dict = '\n '.join(alert_dict['log_details'])
         newer_alert_dict = new_alert_dict.replace("\"", "'")
         conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
-
 
         pretty_msg = """
             :red_circle: Airflow DAG Failed.  

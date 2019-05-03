@@ -147,7 +147,7 @@ def airflow_handler(data, context):
 
         trace_dict = get_trace(msg_list = new_blob_list)
 
-        if trace_dict['Traceback'] is not None:
+        if 'Traceback' not in trace_dict:
             # set up alert message format; this is where you would like to customize your alert message:
             alert_dict = dict()
             alert_dict['dag_id'] = log_array[0]

@@ -117,26 +117,26 @@ def airflow_handler(data, context):
                         
         return (counter_tuple)  
 
-    # extracting trace errors
-    trace_dict = {}
-    for count, err_line in enumerate(new_blob_list):
-        counter = count
-        # first get the attempt number:
-        if 'Starting attempt' in err_line:
-            trace_dict['Attempts'] = err_line.split('-')[-1]
-            # only send final failed attempt
-            if err_line.split('-')[-1][-3] == err_line.split('-')[-1][-1]:
-                for begin_end_pos in begin_end_trace(new_blob_list):
-                    begin_pos = begin_end_pos[0]
-                    end_pos = begin_end_pos[1]
-                    trace_dict['Traceback'] = new_blob_list[begin_pos: end_pos+1]
-
-    
     blob_name = blob.name
     log_array = blob_name.split('/')
 
     # checking the logging_mixin output (last line of log)
     if 'Task exited with return code 1' in new_blob_list[-2]:
+
+        # extracting trace errors
+        trace_dict = {}
+        for count, err_line in enumerate(new_blob_list):
+            counter = count
+            # first get the attempt number:
+            if 'Starting attempt' in err_line:
+                trace_dict['Attempts'] = err_line.split('-')[-1]
+                # only send final failed attempt
+                if err_line.split('-')[-1][-3] == err_line.split('-')[-1][-1]:
+                    for begin_end_pos in begin_end_trace(new_blob_list):
+                        begin_pos = begin_end_pos[0]
+                        end_pos = begin_end_pos[1]
+                        trace_dict['Traceback'] = new_blob_list[begin_pos: end_pos+1]
+
         # set up alert message format; this is where you would like to customize your alert message:
         alert_dict = dict()
         alert_dict['dag_id'] = log_array[0]

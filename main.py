@@ -86,12 +86,13 @@ def airflow_handler(data, context):
          event (dict): Event payload.
          context (google.cloud.functions.Context): Metadata for the event.
     """
-    # define header for slack incoming webhook
+    # define header for slack incoming webhook:
     headers = {
         'Content-type': 'application/json',
     }  
     slack_url = 'https://hooks.slack.com/services/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'
 
+    # getting blob metadata:
     client = storage.Client()
     bucket = client.get_bucket(format(data['bucket']))
     blob = bucket.get_blob(format(data['name']))
@@ -99,6 +100,10 @@ def airflow_handler(data, context):
     blob_str = blob.download_as_string()
     new_blob_str = blob_str.decode('utf-8')
     new_blob_list = new_blob_str.split('\n')
+
+    blob_name = blob.name
+    log_array = blob_name.split('/')
+
 
     # a helper that catches the beginning line number of Traceback and the ending line number of the same Traceback. Catches all.
     def begin_end_trace(msg_list):
@@ -116,6 +121,7 @@ def airflow_handler(data, context):
                         counter_tuple.append((b_counter, e_counter))
                         
         return (counter_tuple)  
+
 
     # a helper that extracts trace errors
     def get_trace(msg_list):
@@ -135,10 +141,8 @@ def airflow_handler(data, context):
 
         return trace_dict
 
-    blob_name = blob.name
-    log_array = blob_name.split('/')
 
-    # checking the logging_mixin output (last line of log)
+    # checking the logging_mixin output (last line of log before the empty line)
     if 'Task exited with return code 1' in new_blob_list[-2]:
 
         trace_dict = get_trace(msg_list = new_blob_list)

@@ -147,39 +147,40 @@ def airflow_handler(data, context):
 
         trace_dict = get_trace(msg_list = new_blob_list)
 
-        # set up alert message format; this is where you would like to customize your alert message:
-        alert_dict = dict()
-        alert_dict['dag_id'] = log_array[0]
-        alert_dict['task_id'] = log_array[1]
-        alert_dict['attempts'] = trace_dict['Attempts']
-        alert_dict['traceback'] = trace_dict['Traceback']
-        ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
-        new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
-        alert_dict['exec_ts'] = new_ts
-        new_alert_dict = '\n '.join(alert_dict['traceback'])
-        newer_alert_dict = new_alert_dict.replace("\"", "'")
-        conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
+        if trace_dict['Traceback'] is not None:
+            # set up alert message format; this is where you would like to customize your alert message:
+            alert_dict = dict()
+            alert_dict['dag_id'] = log_array[0]
+            alert_dict['task_id'] = log_array[1]
+            alert_dict['attempts'] = trace_dict['Attempts']
+            alert_dict['traceback'] = trace_dict['Traceback']
+            ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
+            new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
+            alert_dict['exec_ts'] = new_ts
+            new_alert_dict = '\n '.join(alert_dict['traceback'])
+            newer_alert_dict = new_alert_dict.replace("\"", "'")
+            conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
 
-        pretty_msg = """
-            :red_circle: Airflow DAG Failed.  
-            *DAG ID*: {dagId} 
-            *Task ID*: {taskId}
-            *Attempts of Retries*: {attempts}
-            *Execution Timestamp*: {execTimestamp}
-            *Traceback Details*: 
-            {traceback}
-            *Severity*: {severity}
-            *Airflow DAG Status URL*: {url}
-            """.format(
-            dagId=alert_dict['dag_id'],
-            taskId=alert_dict['task_id'],
-            attempts=alert_dict['attempts'],
-            execTimestamp=alert_dict['exec_ts'],
-            traceback=conv_alert_dict,
-            severity='ERROR',
-            url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
+            pretty_msg = """
+                :red_circle: Airflow DAG Failed.  
+                *DAG ID*: {dagId} 
+                *Task ID*: {taskId}
+                *Attempts of Retries*: {attempts}
+                *Execution Timestamp*: {execTimestamp}
+                *Traceback Details*: 
+                {traceback}
+                *Severity*: {severity}
+                *Airflow DAG Status URL*: {url}
+                """.format(
+                dagId=alert_dict['dag_id'],
+                taskId=alert_dict['task_id'],
+                attempts=alert_dict['attempts'],
+                execTimestamp=alert_dict['exec_ts'],
+                traceback=conv_alert_dict,
+                severity='ERROR',
+                url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
 
-        t = Template('{"text": "{{pretty_msg}}"}')
-        pretty_payload = t.render(pretty_msg=pretty_msg)
-        response = requests.post(slack_url, headers=headers, data=pretty_payload)
-        print(response.text)
+            t = Template('{"text": "{{pretty_msg}}"}')
+            pretty_payload = t.render(pretty_msg=pretty_msg)
+            response = requests.post(slack_url, headers=headers, data=pretty_payload)
+            print(response.text)

@@ -79,24 +79,6 @@ def inject_to_slack(event, context):
         return None
 
 
-# a helper that catches the beginning line number of Traceback and the ending line number of the same Traceback. Catches all.
-def begin_end_trace(msg_list):
-    counter = 0
-    counter_tuple = []
-    
-    for c, l in enumerate(msg_list):
-        if 'Traceback' in l and 'INFO' in l:
-            b_counter = c
-            counter = c
-            
-            for sub_c, sub_l in enumerate(msg_list[counter:]):
-                if 'ERROR' in sub_l:
-                    e_counter = sub_c + counter
-                    counter_tuple.append((b_counter, e_counter))
-                    
-    return (counter_tuple)  
-
-
 # this CF takes airflow logs that are being stored in Cloud Storage and send to StackDriver only the traceback errors 
 def airflow_handler(data, context):
     """Triggered by a change to a Cloud Storage bucket.
@@ -117,6 +99,23 @@ def airflow_handler(data, context):
     blob_str = blob.download_as_string()
     new_blob_str = blob_str.decode('utf-8')
     new_blob_list = new_blob_str.split('\n')
+
+    # a helper that catches the beginning line number of Traceback and the ending line number of the same Traceback. Catches all.
+    def begin_end_trace(msg_list):
+        counter = 0
+        counter_tuple = []
+        
+        for c, l in enumerate(msg_list):
+            if 'Traceback' in l and 'INFO' in l:
+                b_counter = c
+                counter = c
+                
+                for sub_c, sub_l in enumerate(msg_list[counter:]):
+                    if 'ERROR' in sub_l:
+                        e_counter = sub_c + counter
+                        counter_tuple.append((b_counter, e_counter))
+                        
+        return (counter_tuple)  
 
     # extracting trace errors
     trace_dict = {}

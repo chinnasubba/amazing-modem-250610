@@ -134,10 +134,10 @@ def airflow_handler(data, context):
                 trace_dict['Attempts'] = err_line.split('-')[-1]
                 # only send final failed attempt
                 if err_line.split('-')[-1][-3] == err_line.split('-')[-1][-1]:
-                    for begin_end_pos in begin_end_trace(new_blob_list):
+                    for begin_end_pos in begin_end_trace(msg_list):
                         begin_pos = begin_end_pos[0]
                         end_pos = begin_end_pos[1]
-                        trace_dict['Traceback'] = new_blob_list[begin_pos: end_pos+1]
+                        trace_dict['Traceback'] = msg_list[begin_pos: end_pos+1]
 
         return trace_dict
 

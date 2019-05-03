@@ -79,6 +79,24 @@ def inject_to_slack(event, context):
         return None
 
 
+# a helper that catches the beginning line number of Traceback and the ending line number of the same Traceback. Catches all.
+def begin_end_trace(msg_list):
+    counter = 0
+    counter_tuple = []
+    
+    for c, l in enumerate(msg_list):
+        if 'Traceback' in l and 'INFO' in l:
+            b_counter = c
+            counter = c
+            
+            for sub_c, sub_l in enumerate(msg_list[counter:]):
+                if 'ERROR' in sub_l:
+                    e_counter = sub_c + counter
+                    counter_tuple.append((b_counter, e_counter))
+                    
+    return (counter_tuple)  
+
+
 # this CF takes airflow logs that are being stored in Cloud Storage and send to StackDriver only the traceback errors 
 def airflow_handler(data, context):
     """Triggered by a change to a Cloud Storage bucket.
@@ -101,17 +119,19 @@ def airflow_handler(data, context):
     new_blob_list = new_blob_str.split('\n')
 
     # extracting trace errors
-    for count, line in enumerate(new_blob_list):
+    trace_dict = {}
+    for count, err_line in enumerate(new_blob_list):
         counter = count
-        traceback = []
+        # first get the attempt number:
+        if 'Starting attempt' in err_line:
+            trace_dict['Attempts'] = err_line.split('-')[-1]
+            # only send final failed attempt
+            if err_line.split('-')[-1][-3] == err_line.split('-')[-1][-1]:
+                for begin_end_pos in begin_end_trace(new_blob_list):
+                    begin_pos = begin_end_pos[0]
+                    end_pos = begin_end_pos[1]
+                    trace_dict['Traceback'] = new_blob_list[begin_pos: end_pos+1]
 
-        if 'ERROR' in line:
-            for sub_count, sub_line in enumerate(new_blob_list, counter):
-                
-                if ('INFO' not in sub_line) and (' /tmp' not in sub_line) and (sub_line[0:3] != '---') and (sub_line[-4:-1] != '---') \
-                and ('AIRFLOW_' not in sub_line):
-                    traceback.append(sub_line)
-            break
     
     blob_name = blob.name
     log_array = blob_name.split('/')
@@ -123,11 +143,11 @@ def airflow_handler(data, context):
         alert_dict['dag_id'] = log_array[0]
         alert_dict['task_id'] = log_array[1]
         alert_dict['attempts'] = log_array[3][0]
-        alert_dict['log_details'] = traceback
+        alert_dict['traceback'] = trace_dict['Traceback']
         ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
         new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
         alert_dict['exec_ts'] = new_ts
-        new_alert_dict = '\n '.join(alert_dict['log_details'])
+        new_alert_dict = '\n '.join(alert_dict['traceback'])
         newer_alert_dict = new_alert_dict.replace("\"", "'")
         conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
 
@@ -137,8 +157,8 @@ def airflow_handler(data, context):
             *Task ID*: {taskId}
             *Attempts of Retries*: {attempts}
             *Execution Timestamp*: {execTimestamp}
-            *Log Details*: 
-            {logDetails}
+            *Traceback Details*: 
+            {traceback}
             *Severity*: {severity}
             *Airflow DAG Status URL*: {url}
             """.format(
@@ -146,7 +166,7 @@ def airflow_handler(data, context):
             taskId=alert_dict['task_id'],
             attempts=alert_dict['attempts'],
             execTimestamp=alert_dict['exec_ts'],
-            logDetails=conv_alert_dict,
+            traceback=conv_alert_dict,
             severity='ERROR',
             url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
 

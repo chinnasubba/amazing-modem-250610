@@ -170,26 +170,26 @@ def airflow_handler(data, context):
             newer_alert_dict = new_alert_dict.replace("\"", "'")
             conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
 
-            pretty_msg = """
-                :red_circle: Airflow DAG Failed.  
-                *DAG ID*: {dagId} 
-                *Task ID*: {taskId}
-                *Attempts of Retries*: {attempts}
-                *Execution Timestamp*: {execTimestamp}
-                *Traceback Details*: 
-                {traceback}
-                *Severity*: {severity}
-                *Airflow DAG Status URL*: {url}
-                """.format(
-                dagId=alert_dict['dag_id'],
-                taskId=alert_dict['task_id'],
-                attempts=alert_dict['attempts'],
-                execTimestamp=alert_dict['exec_ts'],
-                traceback=conv_alert_dict,
-                severity='ERROR',
-                url = f"http://34.83.69.168:8080/admin/airflow/log?task_id={alert_dict['task_id']}&dag_id={alert_dict['dag_id']}&execution_date={log_array[2].replace(':', '%3A').replace('+', '%2B')}&format=json")
+        pretty_msg = """
+            :red_circle: Airflow DAG Failed.  
+            *DAG ID*: {dagId} 
+            *Task ID*: {taskId}
+            *Attempts of Retries*: {attempts}
+            *Execution Timestamp*: {execTimestamp}
+            *Traceback Details*: 
+            {traceback}
+            *Severity*: {severity}
+            *Airflow DAG Status URL*: {url}
+            """.format(
+            dagId=alert_dict['dag_id'],
+            taskId=alert_dict['task_id'],
+            attempts=alert_dict['attempts'],
+            execTimestamp=alert_dict['exec_ts'],
+            traceback=conv_alert_dict,
+            severity='ERROR',
+            url = f"http://34.83.69.168:8080/admin/airflow/log?task_id={alert_dict['task_id']}&dag_id={alert_dict['dag_id']}&execution_date={log_array[2].replace(':', '%3A').replace('+', '%2B')}&format=json")
 
-            t = Template('{"text": "{{pretty_msg}}"}')
-            pretty_payload = t.render(pretty_msg=pretty_msg)
-            response = requests.post(slack_url, headers=headers, data=pretty_payload)
-            print(response.text)
+        t = Template('{"text": "{{pretty_msg}}"}')
+        pretty_payload = t.render(pretty_msg=pretty_msg)
+        response = requests.post(slack_url, headers=headers, data=pretty_payload)
+        print(response.text)

@@ -109,17 +109,17 @@ def airflow_handler(data, context):
     def begin_end_trace(msg_list):
         counter = 0
         counter_tuple = []
-        
+
         for c, l in enumerate(msg_list):
             if 'Traceback' in l and 'INFO' in l:
                 b_counter = c
                 counter = c
-                
+
                 for sub_c, sub_l in enumerate(msg_list[counter:]):
                     if 'ERROR' in sub_l:
                         e_counter = sub_c + counter
                         counter_tuple.append((b_counter, e_counter))
-                        
+
         return (counter_tuple)  
 
 
@@ -137,10 +137,19 @@ def airflow_handler(data, context):
                     for begin_end_pos in begin_end_trace(msg_list):
                         begin_pos = begin_end_pos[0]
                         end_pos = begin_end_pos[1]
-                        trace_dict['Traceback'] = msg_list[begin_pos: end_pos+1]
+                        trace_dict['Traceback'] = msg_list[begin_pos: end_pos - 2]
 
         return trace_dict
 
+
+    # a helper that trims down traceback:
+    def trimmer(long_list):
+        slim_list = []
+        for line in long_list:
+            if 'INFO -' in line:
+                slim_list.append(line.split("INFO -")[1])
+        return slim_list
+        
 
     # checking the logging_mixin output (last line of log before the empty line)
     if 'Task exited with return code 1' in new_blob_list[-2]:
@@ -153,7 +162,7 @@ def airflow_handler(data, context):
             alert_dict['dag_id'] = log_array[0]
             alert_dict['task_id'] = log_array[1]
             alert_dict['attempts'] = trace_dict['Attempts']
-            alert_dict['traceback'] = trace_dict['Traceback']
+            alert_dict['traceback'] = trimmer(trace_dict['Traceback'])
             ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
             new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
             alert_dict['exec_ts'] = new_ts
@@ -178,7 +187,7 @@ def airflow_handler(data, context):
                 execTimestamp=alert_dict['exec_ts'],
                 traceback=conv_alert_dict,
                 severity='ERROR',
-                url=f"http://34.83.69.168:8080/admin/airflow/tree?dag_id={alert_dict['dag_id']}")
+                url = f"http://34.83.69.168:8080/admin/airflow/log?task_id={alert_dict['task_id']}&dag_id={alert_dict['dag_id']}&execution_date={log_array[2].replace(':', '%3A').replace('+', '%2B')}&format=json")
 
             t = Template('{"text": "{{pretty_msg}}"}')
             pretty_payload = t.render(pretty_msg=pretty_msg)

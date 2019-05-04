@@ -133,7 +133,7 @@ def airflow_handler(data, context):
             if 'Starting attempt' in err_line:
                 trace_dict['Attempts'] = err_line.split('-')[-1]
                 # only send final failed attempt
-                if err_line.split('-')[-1][-3] == err_line.split('-')[-1][-1]:
+                if err_line.split('-')[-1].split(' ')[-3] == err_line.split('-')[-1].split(' ')[-1]:
                     for begin_end_pos in begin_end_trace(msg_list):
                         begin_pos = begin_end_pos[0]
                         end_pos = begin_end_pos[1]

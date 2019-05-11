@@ -42,7 +42,7 @@ def inject_to_slack(event, context):
 
     # only push ERROR or WARNING message to Slack
     # if alert_dict['severity'] == "ERROR": # or alert_dict['severity'] == "WARNING"
-    if alert_dict['severity'] == "WARNING":
+    if alert_dict['severity'] in ("WARNING", "ERROR"):
         # WARNING: payload changes for every severity type. Need to change the keys of alert_dict['jsonPayload_data]
 
         # set up jinja template

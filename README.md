@@ -13,6 +13,6 @@
 
 * Filter top priority error messages from fivetran (`warehouse` project and `NStoSQL2` project), to be sent to slack channel (#analytics_errors). (This is done).
 
-* Filter top priority error messages from airflow server to monitor native ELT pipelines.
+* Filter top priority error messages from airflow server to monitor native ELT pipelines. (This is done).
 
 * Adopt SD best practices. Create analytics driven metrics by defining a set of SLI's (service level indicators) that best serve the analytics engineering warehouse.

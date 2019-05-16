@@ -5,6 +5,7 @@ from datetime import timedelta
 from datetime import datetime
 from jinja2 import Template
 from google.cloud import storage
+import re
 
 
 # this CF takes fivetran logs pub/sub and transform to messages for Slack webhook ingestion
@@ -193,3 +194,55 @@ def airflow_handler(data, context):
         pretty_payload = t.render(pretty_msg=pretty_msg)
         response = requests.post(slack_url, headers=headers, data=pretty_payload)
         print(response.text)
+
+
+# this CF takes airflow server error logs around gs handler 404, and transform to messages for Slack 
+def sys_error(event, context):
+    """Triggered from a message on a Cloud Pub/Sub topic.
+    Args:
+         event (dict): Event payload.
+         context (google.cloud.functions.Context): Metadata for the event.
+    """
+        # define header for slack incoming webhook
+    headers = {
+        'Content-type': 'application/json',
+    }  
+    slack_url = 'https://hooks.slack.com/services/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'
+    
+    # decode event paylod
+    pubsub_message = base64.b64decode(event['data']).decode('utf-8')
+    pubsub_message = json.loads(pubsub_message)
+    
+    # set up alert message format; this is where you would like to customize your alert message:
+    alert_dict = dict()
+    alert_dict['log_id'] = pubsub_message['insertId']
+    alert_dict['labels'] = pubsub_message['labels']['compute.googleapis.com/resource_name']
+    alert_dict['logName'] = pubsub_message['logName']
+
+    # convert timezone to PST
+    ts = datetime.strptime(pubsub_message['receiveTimestamp'][:-4], "%Y-%m-%dT%H:%M:%S.%f")
+    new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S.%f")
+    alert_dict['receiveTimestamp'] = new_ts
+
+    alert_dict['textPayload'] = pubsub_message['textPayload'].replace('{', '{{').replace('}', '}}').replace('"', "'").replace('\\', ' ')
+    
+    pretty_msg = """
+        :red_circle: Connector Failed.  
+        *Log ID*: {logId} 
+        *Labels*: {labels}
+        *Log Name*: {logName}
+        *Received Timestamp*: {receivedAtTimestamp}
+        *Error Message*: {logPayload}
+        """.format(
+        logId=alert_dict['log_id'],
+        labels=alert_dict['labels'],
+        logName=alert_dict['logName'],
+        receivedAtTimestamp=alert_dict['receiveTimestamp'],
+        logPayload=alert_dict['textPayload']
+    )
+
+    t = Template('{"text": "{{pretty_msg}}"}')
+    pretty_payload = t.render(pretty_msg=pretty_msg)
+
+    response = requests.post(slack_url, headers=headers, data=pretty_payload)
+    print(response.text)

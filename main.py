@@ -25,21 +25,22 @@ def inject_to_slack(event, context):
     pubsub_message = base64.b64decode(event['data']).decode('utf-8')
     pubsub_message = json.loads(pubsub_message)
     
-    # set up alert message format; this is where you would like to customize your alert message:
-    alert_dict = dict()
-    alert_dict['log_id'] = pubsub_message['insertId']
-    alert_dict['connector_id'] = pubsub_message['jsonPayload']['connector_id']
-    alert_dict['connector_type'] = pubsub_message['jsonPayload']['connector_type']
-    if 'data' in pubsub_message['jsonPayload'].keys():
-        alert_dict['jsonPayload_data'] = pubsub_message['jsonPayload']['data']
-
-    alert_dict['severity'] = pubsub_message['severity']
-    alert_dict['logName'] = pubsub_message['logName']
-    
     # convert timezone to PST
     ts = datetime.strptime(pubsub_message['receiveTimestamp'][:-4], "%Y-%m-%dT%H:%M:%S.%f")
     new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S.%f")
-    alert_dict['receiveTimestamp'] = new_ts
+
+    # set up alert message format; this is where you would like to customize your alert message:
+    alert_dict = {
+        'log_id':  pubsub_message['insertId'],
+        'connector_id': pubsub_message['jsonPayload']['connector_id'],
+        'connector_type': pubsub_message['jsonPayload']['connector_type'],
+        'severity': pubsub_message['severity'],
+        'logName': pubsub_message['logName'],
+        'receiveTimestamp': new_ts
+    }
+
+    if 'data' in pubsub_message['jsonPayload'].keys():
+        alert_dict['jsonPayload_data'] = pubsub_message['jsonPayload']['data']
 
     # only push ERROR or WARNING message to Slack
     if alert_dict['severity'] == "ERROR": # or alert_dict['severity'] == "WARNING"
@@ -75,7 +76,8 @@ def inject_to_slack(event, context):
         pretty_payload = t.render(pretty_msg=pretty_msg)
 
         response = requests.post(slack_url, headers=headers, data=pretty_payload)
-        
+        print(response.text)
+
     else:
         return None
 
@@ -157,16 +159,19 @@ def airflow_handler(data, context):
 
         trace_dict = get_trace(msg_list = new_blob_list)
 
+        ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
+        new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
+
         if 'Traceback' in trace_dict:
             # set up alert message format; this is where you would like to customize your alert message:
-            alert_dict = dict()
-            alert_dict['dag_id'] = log_array[0]
-            alert_dict['task_id'] = log_array[1]
-            alert_dict['attempts'] = trace_dict['Attempts']
-            alert_dict['traceback'] = trimmer(trace_dict['Traceback'])
-            ts = datetime.strptime(new_blob_list[0][1:20], "%Y-%m-%d %H:%M:%S")
-            new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S")
-            alert_dict['exec_ts'] = new_ts
+            alert_dict = {
+                'dag_id': log_array[0],
+                'task_id': log_array[1],
+                'attempts': trace_dict['Attempts'],
+                'traceback': trimmer(trace_dict['Traceback']),
+                'exec_ts': new_ts
+            }
+
             new_alert_dict = '\n '.join(alert_dict['traceback'])
             newer_alert_dict = new_alert_dict.replace("\"", "'")
             conv_alert_dict = newer_alert_dict.replace('{}', '{{}}')
@@ -213,19 +218,19 @@ def sys_error(event, context):
     pubsub_message = base64.b64decode(event['data']).decode('utf-8')
     pubsub_message = json.loads(pubsub_message)
     
-    # set up alert message format; this is where you would like to customize your alert message:
-    alert_dict = dict()
-    alert_dict['log_id'] = pubsub_message['insertId']
-    alert_dict['labels'] = pubsub_message['labels']['compute.googleapis.com/resource_name']
-    alert_dict['logName'] = pubsub_message['logName']
-
     # convert timezone to PST
     ts = datetime.strptime(pubsub_message['receiveTimestamp'][:-4], "%Y-%m-%dT%H:%M:%S.%f")
     new_ts = datetime.strftime(ts + timedelta(hours=-7), "%Y-%m-%dT%H:%M:%S.%f")
-    alert_dict['receiveTimestamp'] = new_ts
 
-    alert_dict['textPayload'] = pubsub_message['textPayload'].replace('{', '{{').replace('}', '}}').replace('"', "'").replace('\\', ' ')
-    
+    # set up alert message format; this is where you would like to customize your alert message:
+    alert_dict = {
+        'log_id': pubsub_message['insertId'],
+        'labels': pubsub_message['labels']['compute.googleapis.com/resource_name'],
+        'logName': pubsub_message['logName'],
+        'receiveTimestamp': new_ts,
+        'textPayload': pubsub_message['textPayload'].replace('{', '{{').replace('}', '}}').replace('"', "'").replace('\\', ' ')
+    }
+
     pretty_msg = """
         :red_circle: Airflow GCS Handler experienced HTTP 404 Error.  
         *Log ID*: {logId} 

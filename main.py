@@ -227,7 +227,7 @@ def sys_error(event, context):
     alert_dict['textPayload'] = pubsub_message['textPayload'].replace('{', '{{').replace('}', '}}').replace('"', "'").replace('\\', ' ')
     
     pretty_msg = """
-        :red_circle: Connector Failed.  
+        :red_circle: Airflow GCS Handler experienced HTTP 404 Error.  
         *Log ID*: {logId} 
         *Labels*: {labels}
         *Log Name*: {logName}
